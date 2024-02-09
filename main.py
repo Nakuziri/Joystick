@@ -13,6 +13,9 @@ conn = pymysql.connect(
 
 app = Flask(__name__)
 
+
+app.secret_key = 'bombaclaaattttt'
+
 login_manager = flask_login.LoginManager()
 
 login_manager.init_app(app)
@@ -29,23 +32,26 @@ class user:
     def get_id(self):
         return str(self.id)
     
-    @login_manager.user_loader
-    def load_user(user_id):
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM `users` WHERE `id` = " + user_id)
-        result = cursor.fetchone()
-        cursor.close()
-        cursor.commit()
+@login_manager.user_loader
+def load_user(user_id):
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM `users` WHERE `ID` = " + str(user_id))
+    result = cursor.fetchone()
+    cursor.close()
+    conn.commit()
 
-        if result is None:
-            return None
-        
-        return user(result["id"],result['username'])
+    if result is None:
+        return None
+    
+    return user(result["ID"],result['Username'])
+
 @app.route('/land')
-def index():
-    user_name = 'goodjob'
+def landingpage():
+    if flask_login.current_user.is_authenticated:
+        return redirect('feed')
+   
 
-    return render_template('land.html.jinja', user_name = user_name)
+    return render_template('land.html.jinja')
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -65,27 +71,28 @@ def register():
 
 @app.route('/sign_in', methods=['GET','POST'])
 def sign_in():
-    if request.method == 'GET':
-        usernameLog = request.form['usernameLog']
-        passwordLog = request.form['passwordLog']
+    if request.method == 'POST':
+        usernameLog = request.form["usernameLog"]
+        passwordLog = request.form["passwordLog"]
         cursor = conn.cursor()
         cursor.execute(f"SELECT * FROM `users` WHERE `Username` = '{usernameLog}' ")
 
         result = cursor.fetchone()
 
         cursor.close()
-        cursor.commit()
+        conn.commit()
 
-    if request.form['passwordlog'] == result['password']:
-        user = load_user(result['id'])
-        flask_login.login_user(user)
+        if passwordLog == result['Password']:
+            user = load_user(result['ID'])
+            flask_login.login_user(user)
+            return redirect('/feed')
+        
+    return render_template('sign_in.html')
 
-
-
-
-        return redirect('/feed')
-
-    return  redirect ('/feed')
-
-
-app.secret_key = 'bombaclaaattttt'
+@app.route('/feed',methods=['GET','POST'])
+@flask_login.login_required
+def post_feed():
+    if user.is_authenticated:
+        return flask_login.current_user
+    else:
+        return render_template('sign_in.html')
