@@ -92,7 +92,4 @@ def sign_in():
 @app.route('/feed',methods=['GET','POST'])
 @flask_login.login_required
 def post_feed():
-    if user.is_authenticated:
-        return flask_login.current_user
-    else:
-        return render_template('sign_in.html')
+    return render_template('feed.html.jinja')
